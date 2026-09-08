@@ -1,24 +1,70 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import { ActivityPanel } from "@/components/orchestrator/ActivityPanel";
+import { ChatPanel } from "@/components/orchestrator/ChatPanel";
+import { MemoryPanel } from "@/components/orchestrator/MemoryPanel";
+import { SettingsModal } from "@/components/orchestrator/SettingsModal";
+import { TopBar } from "@/components/orchestrator/TopBar";
+import { useOrchestrator } from "@/lib/orchestrator/use-orchestrator";
+import { useTheme } from "@/lib/orchestrator/use-theme";
+
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "BalSaccie — Personal AI Orchestrator" },
+      {
+        name: "description",
+        content:
+          "BalSaccie is a personal AI orchestrator console: memory sources, a live chat with cited retrieval, and a transparent tool-execution log.",
+      },
+      { property: "og:title", content: "BalSaccie — Personal AI Orchestrator" },
+      {
+        property: "og:description",
+        content:
+          "A control center for a Claude-based orchestrator: RAG memory sources, cited answers, and a live activity feed of every tool call.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  const { sources, toggleSource, messages, activity, busy, send, pushActivity } = useOrchestrator();
+  const { theme, toggle } = useTheme();
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
+    <div className="flex h-screen flex-col overflow-hidden">
+      <h1 className="sr-only">BalSaccie — personal AI orchestrator</h1>
+      <TopBar
+        voiceMode={voiceMode}
+        onVoiceModeChange={setVoiceMode}
+        theme={theme}
+        onToggleTheme={toggle}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
+
+      <main className="flex min-h-0 flex-1">
+        <MemoryPanel
+          sources={sources}
+          onToggle={toggleSource}
+          onAddSource={() => pushActivity("AD", "Add source · connector picker pending", "pending")}
+        />
+        <ChatPanel
+          messages={messages}
+          busy={busy}
+          voiceMode={voiceMode}
+          scopeCount={sources.filter((s) => s.enabled).length}
+          onSend={send}
+        />
+        <ActivityPanel entries={activity} />
+      </main>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
